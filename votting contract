@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract votting{
+    address public owner;
+    uint public timeperiod;
+    uint public noOfvoters;
+    mapping(address=>bool) public voters;
+    constructor(uint tp ){
+        owner=msg.sender;
+        timeperiod=block.timestamp+tp;
+    }
+    function getvotes() public  {
+        require( timeperiod>=block.timestamp,"less funds");
+        if (voters[msg.sender]==false){
+            noOfvoters++;
+        }
+        voters[msg.sender]=true;
+    }
+        struct votes{
+        string about;
+        uint noofvoters;
+        mapping(address => bool) votes;
+        bool completed;
+    }
+    mapping(uint => votes) public Allvoters;
+    uint public numReq;
+    function createRequest(string memory _description)public {
+        votes storage newvote = Allvoters[numReq];
+        numReq++;
+        newvote.about = _description;
+        newvote.completed = true;
+        newvote.noofvoters = 0;
+        }
+    function votingForRequest(uint reqNum)  public   {
+        require(voters[msg.sender] == false, "Not a Funder!");
+        votes storage thisvote = Allvoters[reqNum];
+        require(thisvote.votes[msg.sender] == true, "Already Voted!");
+        thisvote.votes[msg.sender]=true;
+        thisvote.noofvoters++;
+    }
+    function winner(uint reqNum)  public {
+        votes storage thisvote = Allvoters[reqNum];
+        require(thisvote.noofvoters >= noOfvoters/2,"invalid");
+        thisvote.completed = true;
+    }
+}
