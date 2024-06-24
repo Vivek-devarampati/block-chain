@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AssetRental {
+    // Asset structure
+    struct Asset {
+        uint256 id;
+        address owner;
+        string name;
+        uint256 rentalPrice; // Price per rental period (e.g., per day)
+        uint256 deposit; // Refundable deposit required by renter
+        bool available;
+    }
+
+    // State variables
+    address public admin;
+    uint256 public assetCount;
+    mapping(uint256 => Asset) public assets;
+
+    // Events
+    event AssetAdded(uint256 indexed assetId, string name, uint256 rentalPrice, uint256 deposit);
+    event AssetRented(uint256 indexed assetId, address indexed renter, uint256 rentalPeriod);
+    event AssetReturned(uint256 indexed assetId, address indexed renter);
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    // Function to add a new asset for rent
+    function addAsset(string memory _name, uint256 _rentalPrice, uint256 _deposit) external onlyAdmin {
+        assetCount++;
+        assets[assetCount] = Asset(assetCount, msg.sender, _name, _rentalPrice, _deposit, true);
+        emit AssetAdded(assetCount, _name, _rentalPrice, _deposit);
+    }
+
+    // Function to rent an asset
+    function rentAsset(uint256 _assetId, uint256 _rentalPeriod) external payable {
+        require(assets[_assetId].available, "Asset is not available for rent");
+        require(msg.value >= assets[_assetId].rentalPrice * _rentalPeriod + assets[_assetId].deposit, "Insufficient funds");
+
+        assets[_assetId].available = false;
+
+        // Transfer ownership to renter (temporary)
+        // Example: Implementing ERC721 would provide better asset management
+        assets[_assetId].owner = msg.sender;
+
+        // Emit event for rental
+        emit AssetRented(_assetId, msg.sender, _rentalPeriod);
+    }
+
+    // Function to return a rented asset
+    function returnAsset(uint256 _assetId) external {
+        require(assets[_assetId].owner == msg.sender, "You do not own this asset");
+
+        // Transfer ownership back to original owner
+        assets[_assetId].owner = admin;
+        assets[_assetId].available = true;
+
+        // Emit event for return
+        emit AssetReturned(_assetId, msg.sender);
+    }
+
+    // Function to withdraw funds (admin only)
+    function withdrawFunds() external onlyAdmin {
+        payable(admin).transfer(address(this).balance);
+    }
+
+    // Fallback function to receive Ether
+    receive() external payable {}
+}
