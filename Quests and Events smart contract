@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract QuestsAndEvents {
+    // Quest structure
+    struct Quest {
+        uint256 id;
+        string description;
+        uint256 targetValue;
+        uint256 reward;
+        bool completed;
+        mapping(address => bool) participants;
+        mapping(address => bool) completedBy;
+    }
+
+    // State variables
+    address public admin;
+    uint256 public questCount;
+    mapping(uint256 => Quest) public quests;
+
+    // Events
+    event QuestCreated(uint256 indexed questId, string description, uint256 targetValue, uint256 reward);
+    event QuestCompleted(uint256 indexed questId, address indexed participant, uint256 reward);
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    // Function to create a new quest
+    function createQuest(string memory _description, uint256 _targetValue, uint256 _reward) external onlyAdmin {
+        questCount++;
+        quests[questCount] = Quest(questCount, _description, _targetValue, _reward, false);
+        emit QuestCreated(questCount, _description, _targetValue, _reward);
+    }
+
+    // Function for participants to join a quest
+    function joinQuest(uint256 _questId) external {
+        require(!quests[_questId].completed, "Quest is already completed");
+        require(!quests[_questId].participants[msg.sender], "You have already joined this quest");
+
+        quests[_questId].participants[msg.sender] = true;
+    }
+
+    // Function for participants to complete a quest
+    function completeQuest(uint256 _questId, uint256 _valueAchieved) external {
+        require(!quests[_questId].completed, "Quest is already completed");
+        require(quests[_questId].participants[msg.sender], "You are not a participant of this quest");
+
+        if (_valueAchieved >= quests[_questId].targetValue) {
+            quests[_questId].completed = true;
+            quests[_questId].completedBy[msg.sender] = true;
+
+            // Distribute reward
+            payable(msg.sender).transfer(quests[_questId].reward);
+
+            emit QuestCompleted(_questId, msg.sender, quests[_questId].reward);
+        }
+    }
+}
