@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract GameGovernance {
+    // Proposal structure
+    struct Proposal {
+        uint256 id;
+        string description;
+        uint256 forVotes;
+        uint256 againstVotes;
+        bool open;
+        mapping(address => bool) voted;
+    }
+
+    // State variables
+    address public admin;
+    uint256 public proposalCount;
+    mapping(uint256 => Proposal) public proposals;
+
+    // Events
+    event ProposalCreated(uint256 indexed proposalId, string description);
+    event Voted(uint256 indexed proposalId, address indexed voter, bool vote, uint256 forVotes, uint256 againstVotes);
+    event ProposalExecuted(uint256 indexed proposalId, string description, uint256 forVotes, uint256 againstVotes);
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    // Function to create a new proposal
+    function createProposal(string memory _description) external onlyAdmin {
+        proposalCount++;
+        proposals[proposalCount] = Proposal(proposalCount, _description, 0, 0, true);
+        emit ProposalCreated(proposalCount, _description);
+    }
+
+    // Function for stakeholders to vote on a proposal
+    function vote(uint256 _proposalId, bool _vote) external {
+        require(proposals[_proposalId].open, "Proposal is not open for voting");
+        require(!proposals[_proposalId].voted[msg.sender], "You have already voted");
+
+        if (_vote) {
+            proposals[_proposalId].forVotes++;
+        } else {
+            proposals[_proposalId].againstVotes++;
+        }
+
+        proposals[_proposalId].voted[msg.sender] = true;
+
+        emit Voted(_proposalId, msg.sender, _vote, proposals[_proposalId].forVotes, proposals[_proposalId].againstVotes);
+    }
+
+    // Function to close voting on a proposal and execute if passed
+    function closeProposal(uint256 _proposalId) external onlyAdmin {
+        require(proposals[_proposalId].open, "Proposal is not open for voting");
+
+        proposals[_proposalId].open = false;
+
+        // Check if the proposal is approved (simple majority)
+        if (proposals[_proposalId].forVotes > proposals[_proposalId].againstVotes) {
+            // Execute the proposal (example: update game parameters, contract logic, etc.)
+            executeProposal(_proposalId);
+        } else {
+            // Proposal rejected
+            emit ProposalExecuted(_proposalId, proposals[_proposalId].description, proposals[_proposalId].forVotes, proposals[_proposalId].againstVotes);
+        }
+    }
+
+    // Function to execute a passed proposal
+    function executeProposal(uint256 _proposalId) private {
+        // Example: Implement logic to execute the proposal based on proposal details
+        emit ProposalExecuted(_proposalId, proposals[_proposalId].description, proposals[_proposalId].forVotes, proposals[_proposalId].againstVotes);
+    }
+}
