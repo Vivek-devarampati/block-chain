@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract RewardDistribution {
+    address public gameMaster;
+    mapping(address => uint256) public playerRewards;
+
+    event RewardGranted(address indexed player, uint256 amount);
+
+    constructor() {
+        gameMaster = msg.sender;
+    }
+
+    modifier onlyGameMaster() {
+        require(msg.sender == gameMaster, "Only game master can call this function");
+        _;
+    }
+
+    function grantReward(address _player, uint256 _amount) external onlyGameMaster {
+        playerRewards[_player] += _amount;
+        emit RewardGranted(_player, _amount);
+    }
+
+    function claimReward() external {
+        uint256 rewardAmount = playerRewards[msg.sender];
+        require(rewardAmount > 0, "No rewards to claim");
+
+        playerRewards[msg.sender] = 0;
+
+        // Transfer reward to the player
+        // Example: msg.sender.transfer(rewardAmount);
+        // For simplicity, assume direct transfer for demo purposes
+        payable(msg.sender).transfer(rewardAmount);
+    }
+}
