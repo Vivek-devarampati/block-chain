@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Betting {
+    address public manager;
+    mapping(address => uint256) public bets;
+    address[] public players;
+
+    constructor() {
+        manager = msg.sender;
+    }
+
+    function bet() public payable {
+        require(msg.value > 0, "Bet amount must be greater than 0");
+        bets[msg.sender] += msg.value;
+        players.push(msg.sender);
+    }
+
+    function distributePrizes(address winner) public restricted {
+        require(bets[winner] > 0, "Winner must have placed a bet");
+        uint256 totalBetAmount = address(this).balance;
+        uint256 winnerBetAmount = bets[winner];
+        uint256 managerFee = (totalBetAmount * 5) / 100; // 5% fee for the manager
+
+        payable(manager).transfer(managerFee);
+        payable(winner).transfer(totalBetAmount - managerFee);
+
+        // Reset the contract state for the next round
+        reset();
+    }
+
+    function reset() private {
+        for (uint256 i = 0; i < players.length; i++) {
+            bets[players[i]] = 0;
+        }
+        delete players;
+    }
+
+    modifier restricted() {
+        require(msg.sender == manager, "Only the manager can call this function");
+        _;
+    }
+}
